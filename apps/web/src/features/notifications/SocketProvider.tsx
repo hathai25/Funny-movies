@@ -12,7 +12,9 @@ interface SocketCtx {
 
 const Ctx = createContext<SocketCtx>({ connected: false });
 
-const WS_BASE = import.meta.env['VITE_API_BASE_URL'] || '';
+function getWsBase(): string {
+  return import.meta.env['VITE_API_BASE_URL'] || '';
+}
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const { accessToken, isAuthenticated } = useAuth();
@@ -23,7 +25,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isAuthenticated || !accessToken) return;
 
-    const socket: Socket = io(`${WS_BASE}/ws`, {
+    const socket: Socket = io(`${getWsBase()}/ws`, {
       path: '/ws/socket.io',
       transports: ['websocket', 'polling'],
       auth: { token: accessToken },
@@ -41,7 +43,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     socket.on('disconnect', () => setConnected(false));
     socket.on('connect_error', (err) => {
       // eslint-disable-next-line no-console
-      console.warn('socket connect_error:', err.message);
+      console.warn('socket connect_error:', err.message, (err as Error & { description?: unknown }).description);
     });
 
     socket.on(WS_EVENTS.NOTIFICATION_NEW, (event: WsNotificationEvent) => {
