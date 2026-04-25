@@ -42,7 +42,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     socket.on('disconnect', () => setConnected(false));
     socket.on('connect_error', (err) => {
-      // eslint-disable-next-line no-console
       console.warn('socket connect_error:', err.message, (err as Error & { description?: unknown }).description);
     });
 
