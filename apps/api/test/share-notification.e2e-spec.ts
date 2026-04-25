@@ -1,4 +1,4 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import nock from 'nock';
@@ -43,7 +43,6 @@ describe('share -> notification e2e', () => {
     app = moduleRef.createNestApplication();
     app.useWebSocketAdapter(new IoAdapter(app));
     app.setGlobalPrefix('api');
-    app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
     await app.listen(0);
 
