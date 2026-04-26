@@ -1,7 +1,8 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { IoAdapter } from '@nestjs/platform-socket.io';
-import nock from 'nock';
+import { MockAgent, setGlobalDispatcher, getGlobalDispatcher } from 'undici';
+import type { Dispatcher } from 'undici';
 import request from 'supertest';
 import { io as ioClient, Socket } from 'socket.io-client';
 import { AppModule } from '../src/app.module';
@@ -16,6 +17,8 @@ describe('share -> notification e2e', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let url: string;
+  let mockAgent: MockAgent;
+  let originalDispatcher: Dispatcher;
 
   beforeAll(async () => {
     process.env['DATABASE_URL'] = TEST_DB_URL;
@@ -24,13 +27,25 @@ describe('share -> notification e2e', () => {
     process.env['JWT_ACCESS_TTL'] = '1h';
     process.env['NODE_ENV'] = 'test';
 
-    nock.disableNetConnect();
-    nock.enableNetConnect((host) => host.includes('127.0.0.1') || host.includes('localhost'));
-    nock('https://www.youtube.com').persist().get('/oembed').query(true).reply(200, {
-      title: 'Never Gonna Give You Up',
-      author_name: 'Rick Astley',
-      thumbnail_url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
-    });
+    // Intercept undici (used by YoutubeOembedClient) — nock doesn't catch it.
+    originalDispatcher = getGlobalDispatcher();
+    mockAgent = new MockAgent();
+    mockAgent.disableNetConnect();
+    mockAgent.enableNetConnect(/(127\.0\.0\.1|localhost)/);
+    mockAgent
+      .get('https://www.youtube.com')
+      .intercept({ path: /\/oembed.*/, method: 'GET' })
+      .reply(
+        200,
+        JSON.stringify({
+          title: 'Never Gonna Give You Up',
+          author_name: 'Rick Astley',
+          thumbnail_url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+        }),
+        { headers: { 'content-type': 'application/json' } },
+      )
+      .persist();
+    setGlobalDispatcher(mockAgent);
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -53,8 +68,8 @@ describe('share -> notification e2e', () => {
   }, 60_000);
 
   afterAll(async () => {
-    nock.cleanAll();
-    nock.enableNetConnect();
+    await mockAgent.close();
+    setGlobalDispatcher(originalDispatcher);
     await app?.close();
   });
 
@@ -145,5 +160,152 @@ describe('share -> notification e2e', () => {
       .expect(409);
 
     expect(res.body.code).toBe('VIDEO_ALREADY_SHARED');
+  });
+
+  it('rejects login with wrong password', async () => {
+    await request(url)
+      .post('/api/auth/register')
+      .send({ email: 'login-wrong@test.com', password: 'password123', name: 'Eve' })
+      .expect(201);
+
+    await request(url)
+      .post('/api/auth/login')
+      .send({ email: 'login-wrong@test.com', password: 'not-the-password' })
+      .expect(401);
+
+    const ok = await request(url)
+      .post('/api/auth/login')
+      .send({ email: 'login-wrong@test.com', password: 'password123' })
+      .expect(200);
+
+    expect(typeof ok.body.accessToken).toBe('string');
+    expect(ok.body.user.email).toBe('login-wrong@test.com');
+  });
+
+  it('GET /api/videos returns shared videos in reverse-chronological order', async () => {
+    const reg = await request(url)
+      .post('/api/auth/register')
+      .send({ email: 'list@test.com', password: 'password123', name: 'Liz' })
+      .expect(201);
+
+    await request(url)
+      .post('/api/videos')
+      .set('Authorization', `Bearer ${reg.body.accessToken}`)
+      .send({ url: 'https://youtu.be/BBBBBBBBBBB' })
+      .expect(201);
+    await request(url)
+      .post('/api/videos')
+      .set('Authorization', `Bearer ${reg.body.accessToken}`)
+      .send({ url: 'https://youtu.be/CCCCCCCCCCC' })
+      .expect(201);
+
+    const res = await request(url)
+      .get('/api/videos?limit=10')
+      .set('Authorization', `Bearer ${reg.body.accessToken}`)
+      .expect(200);
+
+    const ids = res.body.items.map((v: { youtubeId: string }) => v.youtubeId);
+    // CCC was shared after BBB → must come first
+    expect(ids.indexOf('CCCCCCCCCCC')).toBeLessThan(ids.indexOf('BBBBBBBBBBB'));
+  });
+
+  it('notifications list + mark-as-read flow', async () => {
+    // Two fresh users — sharer and recipient.
+    const sharer = await request(url)
+      .post('/api/auth/register')
+      .send({ email: 'sharer@test.com', password: 'password123', name: 'Sharer' })
+      .expect(201);
+    const recipient = await request(url)
+      .post('/api/auth/register')
+      .send({ email: 'recipient@test.com', password: 'password123', name: 'Recipient' })
+      .expect(201);
+    const tokenS = sharer.body.accessToken as string;
+    const tokenR = recipient.body.accessToken as string;
+
+    // Recipient's inbox starts empty (or unaffected by other tests' leftovers).
+    const before = await request(url)
+      .get('/api/notifications')
+      .set('Authorization', `Bearer ${tokenR}`)
+      .expect(200);
+    const baseUnread = before.body.unreadCount as number;
+
+    await request(url)
+      .post('/api/videos')
+      .set('Authorization', `Bearer ${tokenS}`)
+      .send({ url: 'https://youtu.be/DDDDDDDDDDD' })
+      .expect(201);
+
+    // Wait briefly for the BullMQ worker (inline) to fan out.
+    let listed:
+      | {
+          items: Array<{ id: string; readAt: string | null; videoId: string }>;
+          unreadCount: number;
+        }
+      | undefined;
+    for (let i = 0; i < 20; i++) {
+      const res = await request(url)
+        .get('/api/notifications')
+        .set('Authorization', `Bearer ${tokenR}`)
+        .expect(200);
+      if (res.body.unreadCount > baseUnread) {
+        listed = res.body;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 250));
+    }
+
+    expect(listed).toBeDefined();
+    expect(listed!.unreadCount).toBe(baseUnread + 1);
+    const newest = listed!.items[0]!;
+    expect(newest.readAt).toBeNull();
+
+    const marked = await request(url)
+      .post('/api/notifications/read')
+      .set('Authorization', `Bearer ${tokenR}`)
+      .send({ ids: [newest.id] })
+      .expect(201);
+    expect(marked.body.updated).toBe(1);
+
+    const after = await request(url)
+      .get('/api/notifications')
+      .set('Authorization', `Bearer ${tokenR}`)
+      .expect(200);
+    expect(after.body.unreadCount).toBe(baseUnread);
+    const fetched = after.body.items.find((n: { id: string }) => n.id === newest.id);
+    expect(fetched.readAt).not.toBeNull();
+  }, 30_000);
+
+  it('sharer does not receive a notification for their own share', async () => {
+    const sharer = await request(url)
+      .post('/api/auth/register')
+      .send({ email: 'self@test.com', password: 'password123', name: 'Self' })
+      .expect(201);
+    const tokenS = sharer.body.accessToken as string;
+
+    const before = await request(url)
+      .get('/api/notifications')
+      .set('Authorization', `Bearer ${tokenS}`)
+      .expect(200);
+    const baseCount = before.body.items.length as number;
+
+    await request(url)
+      .post('/api/videos')
+      .set('Authorization', `Bearer ${tokenS}`)
+      .send({ url: 'https://youtu.be/EEEEEEEEEEE' })
+      .expect(201);
+
+    // Give the worker time to (not) deliver — we're asserting no growth.
+    await new Promise((r) => setTimeout(r, 1500));
+
+    const after = await request(url)
+      .get('/api/notifications')
+      .set('Authorization', `Bearer ${tokenS}`)
+      .expect(200);
+    expect(after.body.items.length).toBe(baseCount);
+  }, 15_000);
+
+  it('rejects notifications endpoints without a token', async () => {
+    await request(url).get('/api/notifications').expect(401);
+    await request(url).post('/api/notifications/read').send({ ids: [] }).expect(401);
   });
 });
