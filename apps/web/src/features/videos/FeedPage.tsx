@@ -3,18 +3,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
+import { Send, Sparkles, Film } from 'lucide-react';
 import {
-  buildEmbedUrl,
   shareVideoSchema,
   type ShareVideoInput,
   type Video,
   type VideoList,
 } from '@remitano/shared';
 import { api, extractErrorMessage } from '@/lib/api';
-import { Field } from '@/ui/Field';
 import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { EmptyState } from '@/ui/EmptyState';
 import { useSocketStatus } from '@/features/notifications/SocketProvider';
 import { videosKey } from '@/features/notifications/queryKeys';
+import { VideoCard } from './VideoCard';
 
 export function FeedPage() {
   const qc = useQueryClient();
@@ -57,73 +59,112 @@ export function FeedPage() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="text-lg font-semibold mb-3">Share a YouTube video</h2>
-        <form onSubmit={onSubmit} className="flex gap-2 items-start">
-          <div className="flex-1">
-            <Field label="" error={errors.url?.message}>
+      <section aria-label="Share a video">
+        <Card className="overflow-hidden">
+          <div className="bg-brand-gradient-soft px-5 pt-5 pb-4 sm:px-6">
+            <div className="flex items-center gap-2 text-brand-700">
+              <Sparkles className="h-4 w-4" strokeWidth={2.25} />
+              <span className="label-eyebrow text-brand-700">Share something fun</span>
+            </div>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">
+              Drop a YouTube link
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Everyone online gets a real-time toast — and it lands in their inbox.
+            </p>
+          </div>
+          <form onSubmit={onSubmit} className="border-t border-slate-200/70 p-4 sm:p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
               <input
-                className="input"
+                className="input flex-1"
                 placeholder="https://www.youtube.com/watch?v=…"
+                aria-invalid={!!errors.url}
+                aria-label="YouTube URL"
                 {...register('url')}
               />
-            </Field>
+              <Button
+                type="submit"
+                size="lg"
+                variant="gradient"
+                loading={isSubmitting}
+                leadingIcon={!isSubmitting && <Send className="h-4 w-4" strokeWidth={2.25} />}
+              >
+                {isSubmitting ? 'Sharing' : 'Share'}
+              </Button>
+            </div>
+            {errors.url?.message && (
+              <p role="alert" className="mt-2 text-sm text-rose-600">
+                {errors.url.message}
+              </p>
+            )}
             {serverError && (
-              <p role="alert" className="text-sm text-red-600 mt-1">
+              <p role="alert" className="mt-2 text-sm text-rose-600">
                 {serverError}
               </p>
             )}
-          </div>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Sharing…' : 'Share'}
-          </Button>
-        </form>
+          </form>
+        </Card>
       </section>
 
-      <section>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-semibold">Latest videos</h2>
-          <span
-            className={`text-xs ${connected ? 'text-emerald-600' : 'text-slate-400'}`}
-            aria-live="polite"
-          >
-            {connected ? '● live' : '○ reconnecting'}
+      <section aria-label="Latest videos">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-slate-900">Latest videos</h2>
+            <p className="text-sm text-slate-500">Fresh picks from the team.</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium" aria-live="polite">
+            <span
+              className={`relative inline-flex h-2 w-2 rounded-full ${
+                connected ? 'bg-emerald-500' : 'bg-slate-300'
+              }`}
+            >
+              {connected && (
+                <span className="absolute inset-0 animate-pulse-dot rounded-full bg-emerald-500/60" />
+              )}
+            </span>
+            <span className={connected ? 'text-emerald-700' : 'text-slate-500'}>
+              {connected ? 'Live' : 'Reconnecting'}
+            </span>
           </span>
         </div>
-        {list.isLoading && <p className="text-slate-500">Loading…</p>}
-        {list.isError && <p className="text-red-600">Failed to load videos.</p>}
-        {list.data && list.data.items.length === 0 && (
-          <p className="text-slate-500">
-            No videos yet. Be the first to share one!
-          </p>
+
+        {list.isLoading && (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="overflow-hidden">
+                <div className="aspect-video animate-pulse bg-slate-100" />
+                <div className="space-y-2 p-4">
+                  <div className="h-3 w-3/4 animate-pulse rounded bg-slate-100" />
+                  <div className="h-3 w-1/2 animate-pulse rounded bg-slate-100" />
+                </div>
+              </Card>
+            ))}
+          </div>
         )}
-        <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {list.data?.items.map((v) => (
-            <li
-              key={v.id}
-              className="rounded-lg border border-slate-200 bg-white overflow-hidden"
-            >
-              <div className="aspect-video bg-slate-100">
-                <iframe
-                  loading="lazy"
-                  src={buildEmbedUrl(v.youtubeId)}
-                  title={v.title}
-                  className="w-full h-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-              <div className="p-3 space-y-1">
-                <p className="font-medium truncate" title={v.title}>
-                  {v.title}
-                </p>
-                <p className="text-xs text-slate-500">
-                  Shared by {v.sharedBy.name} · {new Date(v.createdAt).toLocaleString()}
-                </p>
-              </div>
-            </li>
-          ))}
-        </ul>
+
+        {list.isError && (
+          <Card padded className="border-rose-200 bg-rose-50/50 text-sm text-rose-700">
+            Failed to load videos. Try refreshing the page.
+          </Card>
+        )}
+
+        {list.data && list.data.items.length === 0 && (
+          <EmptyState
+            icon={<Film className="h-6 w-6" strokeWidth={2} />}
+            title="No videos yet"
+            description="Be the first to share something funny — paste a YouTube link above."
+          />
+        )}
+
+        {list.data && list.data.items.length > 0 && (
+          <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {list.data.items.map((v) => (
+              <li key={v.id}>
+                <VideoCard video={v} />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );
