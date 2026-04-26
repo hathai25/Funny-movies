@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://REPLACE-WITH-RENDER-URL.onrender.com/api/:path*"
+      "destination": "https://funny-movies-mgbu.onrender.com/api/:path*"
     },
     {
       "source": "/ws/:path*",
-      "destination": "https://REPLACE-WITH-RENDER-URL.onrender.com/ws/:path*"
+      "destination": "https://funny-movies-mgbu.onrender.com/ws/:path*"
     }
   ]
 }
