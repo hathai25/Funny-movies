@@ -17,6 +17,7 @@ const userRoom = (userId: string) => `user:${userId}`;
 
 @WebSocketGateway({
   namespace: '/ws',
+  path: '/ws/socket.io',
   cors: { origin: true, credentials: true },
   transports: ['websocket', 'polling'],
 })
@@ -50,7 +51,9 @@ export class NotificationsGateway
       server.adapter(createAdapter(pub, sub));
       this.logger.log('Socket.IO Redis adapter attached');
     } catch (e) {
-      this.logger.warn(`Redis adapter not attached (${(e as Error).message}); fan-out limited to this instance`);
+      this.logger.warn(
+        `Redis adapter not attached (${(e as Error).message}); fan-out limited to this instance`,
+      );
     }
   }
 

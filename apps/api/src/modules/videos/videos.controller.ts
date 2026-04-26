@@ -1,18 +1,12 @@
-import {
-  Body,
-  Controller,
-  Get,
-  HttpCode,
-  Post,
-  Query,
-  UseGuards,
-  UsePipes,
-} from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { shareVideoSchema, type ShareVideoInput } from '@remitano/shared';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CurrentUser, type AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type AuthenticatedUser,
+} from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { VideosService } from './videos.service';
 
@@ -26,8 +20,10 @@ export class VideosController {
   @ApiBearerAuth()
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
   @HttpCode(201)
-  @UsePipes(new ZodValidationPipe(shareVideoSchema))
-  share(@CurrentUser() user: AuthenticatedUser, @Body() body: ShareVideoInput) {
+  share(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(shareVideoSchema)) body: ShareVideoInput,
+  ) {
     return this.videos.share(user.id, body);
   }
 

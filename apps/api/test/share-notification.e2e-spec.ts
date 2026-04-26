@@ -26,15 +26,11 @@ describe('share -> notification e2e', () => {
 
     nock.disableNetConnect();
     nock.enableNetConnect((host) => host.includes('127.0.0.1') || host.includes('localhost'));
-    nock('https://www.youtube.com')
-      .persist()
-      .get('/oembed')
-      .query(true)
-      .reply(200, {
-        title: 'Never Gonna Give You Up',
-        author_name: 'Rick Astley',
-        thumbnail_url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
-      });
+    nock('https://www.youtube.com').persist().get('/oembed').query(true).reply(200, {
+      title: 'Never Gonna Give You Up',
+      author_name: 'Rick Astley',
+      thumbnail_url: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+    });
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -77,6 +73,7 @@ describe('share -> notification e2e', () => {
     const tokenA = userA.body.accessToken as string;
 
     const socketB: Socket = ioClient(`${url}/ws`, {
+      path: '/ws/socket.io',
       transports: ['websocket'],
       auth: { token: tokenB },
       reconnection: false,

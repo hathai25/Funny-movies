@@ -1,8 +1,11 @@
-import { Body, Controller, Get, Post, Query, UseGuards, UsePipes } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { markReadSchema, type MarkReadInput } from '@remitano/shared';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CurrentUser, type AuthenticatedUser } from '../../common/decorators/current-user.decorator';
+import {
+  CurrentUser,
+  type AuthenticatedUser,
+} from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { NotificationsService } from './notifications.service';
 
@@ -27,8 +30,10 @@ export class NotificationsController {
   }
 
   @Post('read')
-  @UsePipes(new ZodValidationPipe(markReadSchema))
-  markRead(@CurrentUser() user: AuthenticatedUser, @Body() body: MarkReadInput) {
+  markRead(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body(new ZodValidationPipe(markReadSchema)) body: MarkReadInput,
+  ) {
     return this.notifications.markRead(user.id, body.ids);
   }
 }
