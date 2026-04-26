@@ -62,11 +62,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
+      - name: Build shared package
+        run: pnpm --filter @remitano/shared build
+
       - name: Generate Prisma client
-        run: pnpm --filter api prisma generate
+        run: pnpm --filter api exec prisma generate
 
       - name: Apply migrations to test DB
-        run: pnpm --filter api prisma migrate deploy
+        run: pnpm --filter api exec prisma migrate deploy
 
       - name: Lint
         run: pnpm lint
