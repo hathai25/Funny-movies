@@ -3,7 +3,7 @@
 > Remitano fullstack take-home. A small web app for sharing YouTube videos with real-time
 > notifications powered by WebSockets and a Redis-backed background-job queue.
 
-[![CI](https://github.com/REPLACE-ME/remitano-homework/actions/workflows/ci.yml/badge.svg)](#)
+[![CI](https://github.com/hathai25/Funny-movies/actions/workflows/ci.yml/badge.svg)](https://github.com/hathai25/Funny-movies/actions/workflows/ci.yml)
 
 ---
 
@@ -48,6 +48,7 @@ flowchart LR
 ```
 
 When user A shares a video:
+
 1. `POST /api/videos` validates the URL, fetches title/thumbnail via YouTube's public oEmbed
    endpoint, and persists a `Video` row.
 2. The handler enqueues a `video.shared` job in BullMQ and immediately returns 201.
@@ -56,19 +57,19 @@ When user A shares a video:
    adapter so connected clients on **any** API instance receive it.
 4. The browser shows a sonner toast (deduped by notification id) and refreshes its caches.
 
-> **Live URL:** _replace with the deployed Vercel URL after deploying_
+> **Live URL:** <https://funny-movies-web.vercel.app> (Vercel SPA → Render API)
 
 ---
 
 ## 2. Prerequisites
 
-| Tool       | Version     | Why                                |
-| ---------- | ----------- | ---------------------------------- |
-| Node.js    | `>= 20.0`   | API + web                          |
-| pnpm       | `>= 10.0`   | Workspace package manager          |
-| Docker     | `>= 24.0`   | Postgres + Redis (recommended)     |
-| PostgreSQL | `>= 14`     | Only if you don't use Docker       |
-| Redis      | `>= 6`      | Only if you don't use Docker       |
+| Tool       | Version   | Why                            |
+| ---------- | --------- | ------------------------------ |
+| Node.js    | `>= 20.0` | API + web                      |
+| pnpm       | `>= 10.0` | Workspace package manager      |
+| Docker     | `>= 24.0` | Postgres + Redis (recommended) |
+| PostgreSQL | `>= 14`   | Only if you don't use Docker   |
+| Redis      | `>= 6`    | Only if you don't use Docker   |
 
 ```bash
 node --version   # v20+
@@ -95,25 +96,25 @@ cp apps/web/.env.example apps/web/.env
 
 ### `apps/api/.env`
 
-| Variable             | Default                                                              | Notes                                          |
-| -------------------- | -------------------------------------------------------------------- | ---------------------------------------------- |
-| `NODE_ENV`           | `development`                                                        | `production` in deploy                         |
-| `PORT`               | `3001`                                                               |                                                |
-| `LOG_LEVEL`          | `info`                                                               | `debug` for verbose, `silent` for tests        |
-| `DATABASE_URL`       | `postgresql://postgres:postgres@localhost:5432/remitano?schema=public` |                                              |
-| `REDIS_URL`          | `redis://localhost:6379`                                             |                                                |
-| `JWT_ACCESS_SECRET`  | _(required, ≥ 16 chars)_                                             | Use `openssl rand -hex 32` to generate         |
-| `JWT_ACCESS_TTL`     | `7d`                                                                 | Long enough to outlive a typical socket session |
-| `CORS_ORIGIN`        | `http://localhost:5173`                                              | Comma-separated list                           |
-| `THROTTLE_TTL`       | `60`                                                                 | Window in seconds                              |
-| `THROTTLE_LIMIT`     | `120`                                                                | Requests per window per IP                     |
+| Variable            | Default                                                                | Notes                                           |
+| ------------------- | ---------------------------------------------------------------------- | ----------------------------------------------- |
+| `NODE_ENV`          | `development`                                                          | `production` in deploy                          |
+| `PORT`              | `3001`                                                                 |                                                 |
+| `LOG_LEVEL`         | `info`                                                                 | `debug` for verbose, `silent` for tests         |
+| `DATABASE_URL`      | `postgresql://postgres:postgres@localhost:5432/remitano?schema=public` |                                                 |
+| `REDIS_URL`         | `redis://localhost:6379`                                               |                                                 |
+| `JWT_ACCESS_SECRET` | _(required, ≥ 16 chars)_                                               | Use `openssl rand -hex 32` to generate          |
+| `JWT_ACCESS_TTL`    | `7d`                                                                   | Long enough to outlive a typical socket session |
+| `CORS_ORIGIN`       | `http://localhost:5173`                                                | Comma-separated list                            |
+| `THROTTLE_TTL`      | `60`                                                                   | Window in seconds                               |
+| `THROTTLE_LIMIT`    | `120`                                                                  | Requests per window per IP                      |
 
 ### `apps/web/.env`
 
-| Variable           | Default                  | Notes                                                  |
-| ------------------ | ------------------------ | ------------------------------------------------------ |
-| `VITE_API_BASE_URL`| _(empty)_                | Empty in dev (uses Vite proxy) and on Vercel (rewrites)|
-| `VITE_API_PROXY`   | `http://localhost:3001`  | Where the dev Vite server proxies `/api` and `/ws`     |
+| Variable            | Default                 | Notes                                                   |
+| ------------------- | ----------------------- | ------------------------------------------------------- |
+| `VITE_API_BASE_URL` | _(empty)_               | Empty in dev (uses Vite proxy) and on Vercel (rewrites) |
+| `VITE_API_PROXY`    | `http://localhost:3001` | Where the dev Vite server proxies `/api` and `/ws`      |
 
 ---
 
@@ -136,10 +137,10 @@ pnpm --filter api prisma:seed
 
 ### Demo accounts (after seeding)
 
-| Email              | Password      |
-| ------------------ | ------------- |
-| `alice@example.com`| `password123` |
-| `bob@example.com`  | `password123` |
+| Email               | Password      |
+| ------------------- | ------------- |
+| `alice@example.com` | `password123` |
+| `bob@example.com`   | `password123` |
 
 ---
 
@@ -152,6 +153,7 @@ pnpm dev
 ```
 
 This runs:
+
 - API on `http://localhost:3001` (Swagger at `/api/docs`, health at `/api/health`)
 - Web on `http://localhost:5173` (Vite proxies `/api` and `/ws` to the API)
 
@@ -164,9 +166,41 @@ pnpm --filter web test         # Web tests (Vitest + RTL + real in-process Socke
 pnpm test                      # Everything in parallel via the workspace
 ```
 
-The signature e2e test (`apps/api/test/share-notification.e2e-spec.ts`) registers two users,
-opens a real Socket.IO connection for the second one, has the first share a video, and
-asserts that `notification:new` arrives within 8 s with the expected title and sharer name.
+#### Test inventory
+
+Ten test files cover the realtime path top-to-bottom — pure unit tests for service logic and
+the YouTube parser, contract tests for the WebSocket gateway, and a real end-to-end run that
+boots the full Nest app and a live Socket.IO client.
+
+| Suite                                                                | Type               | Covers                                                                                     |
+| -------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------ |
+| `apps/api/src/modules/auth/auth.service.spec.ts`                     | Unit (Jest)        | Register dedup (409), bcrypt hashing, password verification, JWT issuance + payload shape  |
+| `apps/api/src/modules/videos/videos.service.spec.ts`                 | Unit (Jest)        | URL parsing, oEmbed integration, duplicate-share `P2002` → 409, BullMQ enqueue side effect |
+| `apps/api/src/modules/videos/youtube-parser.spec.ts`                 | Unit (Jest)        | All YouTube URL flavours: `watch`, `youtu.be`, `shorts`, `embed`, `live`, `m.`, `music.`   |
+| `apps/api/src/modules/videos/youtube-oembed.client.spec.ts`          | Unit (Jest)        | undici `MockAgent` interceptor — happy path, non-200 fallback, timeout fallback            |
+| `apps/api/src/modules/notifications/notifications.service.spec.ts`   | Unit (Jest)        | Cursor pagination on `(createdAt, id)`, mark-read scoping, unread count                    |
+| `apps/api/src/modules/notifications/notifications.processor.spec.ts` | Unit (Jest)        | Fan-out batching, sharer exclusion, dedup of pre-existing notifications                    |
+| `apps/api/src/modules/notifications/notifications.gateway.spec.ts`   | Unit (Jest)        | JWT handshake (auth header, query, `auth.token`), reject on missing/invalid token          |
+| `apps/api/test/share-notification.e2e-spec.ts`                       | E2E (Jest)         | **Canonical realtime test**: real Nest app + Postgres + Redis + Socket.IO, share → toast   |
+| `apps/web/src/test/socket-toast.test.tsx`                            | Component (Vitest) | Real in-process Socket.IO server pushing `notification:new` → toast renders                |
+| `apps/web/src/test/youtube-parser.test.ts`                           | Unit (Vitest)      | Parser shape validation from the SPA's perspective                                         |
+
+The e2e test (`share-notification.e2e-spec.ts`) is the headline suite: registers two users,
+opens a real `socket.io-client` connection for user B, has user A share a video, and asserts
+B receives `notification:new` within 8 s with the expected title and sharer name. CI runs all
+ten suites against live Postgres + Redis services — see `.github/workflows/ci.yml`.
+
+### Local benchmark
+
+`apps/api/bench/signature-flow.mjs` drives the realtime path end-to-end against a local API:
+seeds N bench users via Prisma, signs JWTs, opens N Socket.IO subscribers, fires K shares,
+and reports p50/p95/p99 fanout latency plus connect/share/delivery success rates. See
+`apps/api/bench/README.md` for details.
+
+```bash
+pnpm --filter api bench                                   # 50 subs, 20 shares @ 1/s
+pnpm --filter api bench -- --subscribers 200 --shares 50  # bigger run
+```
 
 ### Useful one-liners
 
@@ -174,29 +208,76 @@ asserts that `notification:new` arrives within 8 s with the expected title and s
 pnpm typecheck            # full repo typecheck
 pnpm lint                 # ESLint over both apps
 pnpm build                # production build of api + web + shared
-pnpm demo                 # boots the entire stack via docker-compose (needs Docker daemon)
+pnpm demo                 # boots the entire stack via docker compose (needs Docker daemon)
 ```
 
 ---
 
 ## 6. Docker Deployment
 
-### Local end-to-end with Docker (the easy mode)
+There are two compose flavors. Pick by file selection:
+
+| Mode               | What it runs                                                                                                                                   | When to use                                                                            |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Dev** (default)  | `node:20-alpine` containers that bind-mount the workspace and run `pnpm dev` with hot reload                                                   | Iterating on the take-home locally; you want changes to reflect without rebuilding.    |
+| **Prod** (overlay) | Multi-stage built images (`apps/api/Dockerfile`, `apps/web/Dockerfile`) — slim runtime, nginx serving the SPA, `node dist/main.js` for the API | Demonstrating production-style deploy; what reviewers should run to test the artifact. |
+
+### Dev mode
 
 ```bash
-pnpm demo                 # equivalent to: docker-compose up --build
+pnpm demo                 # alias for `docker compose up --build`
+# or:
+docker compose up --build
 ```
 
-This brings up `postgres`, `redis`, `api` (which runs `prisma migrate deploy` + seeds + dev
-server), and `web` (Vite dev server). When everything is up:
+Brings up `postgres`, `redis`, `api` (installs deps, runs migrations, seeds alice/bob, then
+`nest start --watch`), and `web` (`vite dev`). Once running:
 
 - Web: <http://localhost:5173>
 - API: <http://localhost:3001>
 - Swagger: <http://localhost:3001/api/docs>
 
-The worker runs **inline** in the API process. The architecture supports extracting it into a
-separate container by adding another service that runs the same image with a different
-command — see §"Trade-offs" below.
+### Prod mode (built images)
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+```
+
+The overlay (`docker-compose.prod.yml`) replaces `api` and `web` with images built from:
+
+- **`apps/api/Dockerfile`** — three-stage build (`deps` → `builder` → `runtime`). The
+  `builder` stage compiles `@remitano/shared`, runs `prisma generate`, and emits `dist/` via
+  `nest build`. The `runtime` stage carries only the built artifacts + node_modules and runs
+  `prisma migrate deploy && node dist/src/main.js` on start.
+- **`apps/web/Dockerfile`** — two-stage build. The first stage runs `vite build`; the second
+  is a slim `nginx:alpine` that serves `dist/` plus a hand-written `apps/web/nginx.conf`
+  with three notable bits: aggressive `Cache-Control: immutable` on hashed `/assets/`, an
+  upstream proxy to `api:3001` for `/api/*` and `/ws/*` (websocket upgrade headers wired
+  for Socket.IO), and an SPA fallback (`try_files $uri /index.html`) so React Router
+  client-side routes survive a refresh.
+
+Once running:
+
+- Web: <http://localhost:8080> (nginx)
+- API direct: <http://localhost:3001> (also reachable through `/api/*` on :8080)
+- Swagger: <http://localhost:3001/api/docs>
+
+The worker runs **inline** in the API process. The architecture (separate BullMQ queue + a
+Socket.IO Redis adapter for cross-instance fan-out) supports running the worker as its own
+container — start it with `node dist/notifications.worker.js` and remove the processor from
+the API's bootstrap. For the take-home this would just double the Render bill.
+
+### Building the images standalone
+
+If you want to push or scan the images outside of compose:
+
+```bash
+docker build -f apps/api/Dockerfile -t funny-movies-api:1.0.0 .
+docker build -f apps/web/Dockerfile -t funny-movies-web:1.0.0 .
+```
+
+The build context **must** be the repo root — both Dockerfiles need the workspace `pnpm-lock.yaml`
+and the `packages/shared` source tree.
 
 ### Production deployment (Vercel + Render)
 
@@ -215,7 +296,7 @@ the API behind the Vercel domain via rewrites:
    {
      "rewrites": [
        { "source": "/api/:path*", "destination": "https://<your-render>.onrender.com/api/:path*" },
-       { "source": "/ws/:path*",  "destination": "https://<your-render>.onrender.com/ws/:path*"  }
+       { "source": "/ws/:path*", "destination": "https://<your-render>.onrender.com/ws/:path*" }
      ]
    }
    ```
@@ -250,17 +331,17 @@ the API behind the Vercel domain via rewrites:
 
 ## 8. Troubleshooting
 
-| Symptom                                                            | Likely cause / fix |
-| ------------------------------------------------------------------ | ------------------ |
-| `ECONNREFUSED 5432`                                                | Postgres isn't running. `docker-compose up -d postgres` |
-| `ECONNREFUSED 6379`                                                | Redis isn't running. `docker-compose up -d redis`       |
-| API logs `Invalid environment variables`                           | Check `apps/api/.env` against §3 — `JWT_ACCESS_SECRET` must be ≥ 16 chars |
-| Web shows "○ reconnecting" forever                                 | API isn't reachable. Check the Vite proxy / `VITE_API_PROXY` env var |
-| Production: socket connects then immediately disconnects           | `CORS_ORIGIN` mismatch on the API; or you skipped the Vercel rewrite step |
-| Production: first request after idle takes 30–60s                  | Render free-tier cold start. Expected; the SPA shows a loading state. |
-| `oembed status=401`                                                | Some YouTube videos restrict embedding. We fall back to a generic title. |
-| `prisma migrate deploy` errors                                     | Likely a schema drift; rerun `pnpm --filter api prisma migrate dev` locally to create a new migration |
-| `409 VIDEO_ALREADY_SHARED`                                         | By design — the same `youtubeId` cannot be shared twice. Find it in the feed. |
+| Symptom                                                  | Likely cause / fix                                                                                    |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `ECONNREFUSED 5432`                                      | Postgres isn't running. `docker-compose up -d postgres`                                               |
+| `ECONNREFUSED 6379`                                      | Redis isn't running. `docker-compose up -d redis`                                                     |
+| API logs `Invalid environment variables`                 | Check `apps/api/.env` against §3 — `JWT_ACCESS_SECRET` must be ≥ 16 chars                             |
+| Web shows "○ reconnecting" forever                       | API isn't reachable. Check the Vite proxy / `VITE_API_PROXY` env var                                  |
+| Production: socket connects then immediately disconnects | `CORS_ORIGIN` mismatch on the API; or you skipped the Vercel rewrite step                             |
+| Production: first request after idle takes 30–60s        | Render free-tier cold start. Expected; the SPA shows a loading state.                                 |
+| `oembed status=401`                                      | Some YouTube videos restrict embedding. We fall back to a generic title.                              |
+| `prisma migrate deploy` errors                           | Likely a schema drift; rerun `pnpm --filter api prisma migrate dev` locally to create a new migration |
+| `409 VIDEO_ALREADY_SHARED`                               | By design — the same `youtubeId` cannot be shared twice. Find it in the feed.                         |
 
 ---
 
@@ -309,8 +390,9 @@ would change the following:
 ```
 .
 ├── apps/
-│   ├── api/                 # NestJS 10 + Prisma + BullMQ + Socket.IO
-│   │   ├── prisma/          # schema, migrations, seed
+│   ├── api/                       # NestJS 10 + Prisma + BullMQ + Socket.IO
+│   │   ├── bench/                 # local signature-flow load test (Node script)
+│   │   ├── prisma/                # schema, migrations, seed
 │   │   ├── src/
 │   │   │   ├── modules/auth/
 │   │   │   ├── modules/videos/
@@ -319,8 +401,9 @@ would change the following:
 │   │   │   ├── modules/health/
 │   │   │   ├── common/                  # filters, pipes, decorators
 │   │   │   └── config/                  # zod-validated env
-│   │   └── test/                        # e2e (Supertest + socket.io-client)
-│   └── web/                  # React 18 + Vite + Tailwind + TanStack Query
+│   │   ├── test/                        # e2e (Supertest + socket.io-client)
+│   │   └── Dockerfile                   # multi-stage api image
+│   └── web/                       # React 18 + Vite + Tailwind + TanStack Query
 │       ├── src/
 │       │   ├── app/
 │       │   ├── features/auth/
@@ -329,11 +412,14 @@ would change the following:
 │       │   ├── lib/                     # axios client, query keys
 │       │   ├── ui/                      # primitives (Button, Field, Layout)
 │       │   └── test/                    # Vitest + RTL
+│       ├── nginx.conf                   # SPA fallback + /api + /ws upstream proxy
+│       ├── Dockerfile                   # build SPA + serve via nginx:alpine
 │       └── vercel.json
 ├── packages/
-│   └── shared/               # zod schemas + TS types + YouTube URL parser
-├── docker-compose.yml        # postgres, redis, api, web
-├── .github/workflows/ci.yml  # lint + typecheck + tests + build
+│   └── shared/                    # zod schemas + TS types + YouTube URL parser
+├── docker-compose.yml             # dev: postgres, redis, api (hot reload), web (vite)
+├── docker-compose.prod.yml        # prod overlay: built images via Dockerfiles
+├── .github/workflows/ci.yml       # lint + typecheck + tests + build
 └── README.md
 ```
 

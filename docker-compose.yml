@@ -7,11 +7,11 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: remitano
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d remitano"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d remitano']
       interval: 5s
       timeout: 3s
       retries: 10
@@ -20,13 +20,16 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - '6379:6379'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 10
 
+  # Dev mode (default): bind-mounted source, hot reload.
+  # `docker compose up` or `pnpm demo`.
+  # Production-image equivalent lives in docker-compose.prod.yml.
   api:
     image: node:20-alpine
     working_dir: /workspace
@@ -37,25 +40,26 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: development
-      PORT: "3001"
+      PORT: '3001'
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/remitano?schema=public
       REDIS_URL: redis://redis:6379
       JWT_ACCESS_SECRET: dev-secret-dev-secret-dev-secret-dev
-      JWT_ACCESS_TTL: "7d"
+      JWT_ACCESS_TTL: '7d'
       CORS_ORIGIN: http://localhost:5173
       LOG_LEVEL: debug
     volumes:
       - .:/workspace
     ports:
-      - "3001:3001"
+      - '3001:3001'
     command: >
       sh -c "
         corepack enable &&
         corepack prepare pnpm@10.15.0 --activate &&
         pnpm install --frozen-lockfile=false &&
-        pnpm --filter api prisma generate &&
-        pnpm --filter api prisma migrate deploy &&
-        pnpm --filter api prisma db seed &&
+        pnpm --filter @remitano/shared build &&
+        pnpm --filter api exec prisma generate &&
+        pnpm --filter api exec prisma migrate deploy &&
+        pnpm --filter api exec prisma db seed &&
         pnpm --filter api dev
       "
 
@@ -69,7 +73,7 @@ services:
     volumes:
       - .:/workspace
     ports:
-      - "5173:5173"
+      - '5173:5173'
     command: >
       sh -c "
         corepack enable &&

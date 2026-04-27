@@ -1,0 +1,42 @@
+# Production-image overlay. Replaces the bind-mounted dev `api` and `web`
+# services with images built from the multi-stage Dockerfiles. Postgres and
+# Redis are inherited unchanged from docker-compose.yml.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build
+#
+# Web is served on http://localhost:8080 (nginx); the SPA hits /api and /ws
+# at the same origin, which nginx proxies to the api container.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: funny-movies-api:local
+    # The base file mounts the source tree into /workspace and runs a dev
+    # bootstrap. For the built image we need none of that — the image owns
+    # its CMD and WORKDIR.
+    volumes: !reset []
+    command: !reset null
+    working_dir: /app/apps/api
+    environment:
+      NODE_ENV: production
+      PORT: '3001'
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/remitano?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: dev-secret-dev-secret-dev-secret-dev
+      JWT_ACCESS_TTL: '7d'
+      CORS_ORIGIN: http://localhost:8080
+      LOG_LEVEL: info
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: funny-movies-web:local
+    volumes: !reset []
+    command: !reset null
+    working_dir: /
+    environment: {}
+    ports:
+      - '8080:80'
