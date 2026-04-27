@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BellOff, ExternalLink, RefreshCw, CheckCheck } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { NotificationList } from '@remitano/shared';
-import { buildEmbedUrl } from '@remitano/shared';
+import { buildWatchUrl } from '@remitano/shared';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Avatar } from '@/ui/Avatar';
@@ -124,7 +124,7 @@ export function NotificationsPage() {
                   )}
                   <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
                     <a
-                      href={buildEmbedUrl(n.payload.youtubeId)}
+                      href={buildWatchUrl(n.payload.youtubeId)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="group relative block aspect-video w-full overflow-hidden rounded-xl bg-slate-100 sm:h-20 sm:w-32 sm:flex-none"
@@ -151,7 +151,7 @@ export function NotificationsPage() {
                       <div className="mt-1 flex items-center gap-3 text-xs text-slate-500">
                         <time dateTime={n.createdAt}>{relativeTime(n.createdAt)}</time>
                         <a
-                          href={buildEmbedUrl(n.payload.youtubeId)}
+                          href={buildWatchUrl(n.payload.youtubeId)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 font-medium text-brand-600 hover:text-brand-700"
