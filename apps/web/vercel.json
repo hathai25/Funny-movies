@@ -7,6 +7,10 @@
     {
       "source": "/ws/:path*",
       "destination": "https://funny-movies-mgbu.onrender.com/ws/:path*"
+    },
+    {
+      "source": "/((?!api/|ws/).*)",
+      "destination": "/index.html"
     }
   ]
 }
