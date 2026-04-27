@@ -159,6 +159,9 @@ importers:
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@20.19.39)
+      jsonwebtoken:
+        specifier: ^9.0.2
+        version: 9.0.3
       nock:
         specifier: ^14.0.0-beta.16
         version: 14.0.13

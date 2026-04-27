@@ -14,7 +14,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "bench": "node bench/signature-flow.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -64,6 +65,7 @@
     "@typescript-eslint/parser": "^8.13.0",
     "eslint": "^9.14.0",
     "jest": "^29.7.0",
+    "jsonwebtoken": "^9.0.2",
     "nock": "^14.0.0-beta.16",
     "prisma": "^5.22.0",
     "socket.io-client": "^4.8.1",
