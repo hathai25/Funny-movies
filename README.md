@@ -83,8 +83,8 @@ docker --version # 24+
 
 ```bash
 # 1. Clone the repo
-git clone <this-repo-url>
-cd remitano-homework
+git clone https://github.com/hathai25/Funny-movies.git
+cd Funny-movies
 
 # 2. Install dependencies (workspace install handles api, web, shared)
 pnpm install
@@ -92,6 +92,9 @@ pnpm install
 # 3. Configure env files
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
+
+# 4. Generate a JWT secret (≥ 16 chars) and write it into apps/api/.env
+#    Example: openssl rand -hex 32 | xargs -I{} sed -i.bak 's|JWT_ACCESS_SECRET=.*|JWT_ACCESS_SECRET={}|' apps/api/.env
 ```
 
 ### `apps/api/.env`
@@ -146,14 +149,16 @@ pnpm --filter api prisma:seed
 
 ## 5. Running the Application
 
-### Two-process dev (API + web concurrently)
+### Concurrent dev (shared watcher + API + web)
 
 ```bash
 pnpm dev
 ```
 
-This runs:
+This builds `@remitano/shared` once, then runs three processes side-by-side via
+`concurrently`:
 
+- `@remitano/shared` in `tsc --watch` mode so api/web pick up changes to schemas/types
 - API on `http://localhost:3001` (Swagger at `/api/docs`, health at `/api/health`)
 - Web on `http://localhost:5173` (Vite proxies `/api` and `/ws` to the API)
 
@@ -281,27 +286,29 @@ and the `packages/shared` source tree.
 
 ### Production deployment (Vercel + Render)
 
-The recommended topology for this take-home avoids cross-origin cookies entirely by serving
-the API behind the Vercel domain via rewrites:
+The deployed topology is Vercel for the SPA and Render for the API + managed Postgres + Redis.
+The SPA hits relative `/api/*` and `/ws/*` paths and Vercel rewrites them to the Render URL,
+so the browser sees the API as same-origin (no CORS preflights, no cross-origin cookies).
 
-1. **Render** — create a Postgres add-on, a Redis add-on, and one Web Service for the API:
-   - Build command: `pnpm install --frozen-lockfile=false && pnpm --filter api prisma generate && pnpm --filter api build`
-   - Start command: `pnpm --filter api start:prod` (runs `prisma migrate deploy` then `node dist/main.js`)
-   - Env vars: `DATABASE_URL`, `REDIS_URL`, `JWT_ACCESS_SECRET`, `JWT_ACCESS_TTL=7d`,
-     `CORS_ORIGIN=https://<your-vercel>.vercel.app`, `NODE_ENV=production`, `LOG_LEVEL=info`
-2. **Vercel** — import the repo, set root to `apps/web`, build command
-   `pnpm --filter web build`, output `apps/web/dist`. Update `apps/web/vercel.json` to point
-   the rewrites at your Render URL:
-   ```json
-   {
-     "rewrites": [
-       { "source": "/api/:path*", "destination": "https://<your-render>.onrender.com/api/:path*" },
-       { "source": "/ws/:path*", "destination": "https://<your-render>.onrender.com/ws/:path*" }
-     ]
-   }
-   ```
-3. After the first deploy, open the Render shell and run `pnpm --filter api prisma db seed`
-   once to create the demo users.
+Already wired in this repo:
+
+- `apps/web/vercel.json` rewrites point at `https://funny-movies-mgbu.onrender.com`.
+- `apps/api/start:prod` runs `prisma migrate deploy && node dist/src/main.js`.
+
+Steps to reproduce on a fork:
+
+1. **Render** — provision a Postgres add-on, a Redis add-on, and one Web Service for the API.
+   - Build command: `pnpm install --frozen-lockfile=false && pnpm --filter @remitano/shared build && pnpm --filter api exec prisma generate && pnpm --filter api build`
+     - Both the shared build and `pnpm exec prisma generate` are required — `pnpm --filter api prisma generate` looks for a script named `prisma` and silently no-ops (we hit this in CI; same gotcha bites here).
+   - Start command: `pnpm --filter api start:prod`
+   - Env vars: `DATABASE_URL`, `REDIS_URL`, `JWT_ACCESS_SECRET` (≥ 16 chars), `JWT_ACCESS_TTL=7d`, `CORS_ORIGIN=https://<your-vercel>.vercel.app`, `NODE_ENV=production`, `LOG_LEVEL=info`
+2. **Vercel** — import the repo, set the project root to `apps/web`, build command
+   `pnpm --filter @remitano/shared build && pnpm --filter web build`, output `apps/web/dist`.
+   Edit `apps/web/vercel.json` so the rewrite destinations point at **your** Render URL.
+   - **Important:** leave `VITE_API_BASE_URL` empty/unset on Vercel. If it's set to the Render
+     URL, the SPA bypasses the rewrites and hits Render cross-origin, breaking CORS.
+3. After the first deploy, open the Render shell once and run
+   `pnpm --filter api exec prisma db seed` to create the alice/bob demo users.
 
 ---
 
