@@ -101,7 +101,7 @@ export function Layout() {
         <Outlet />
       </main>
 
-      <footer className="mx-auto w-full max-w-6xl px-4 pb-8 pt-4 text-xs text-slate-400 sm:px-6">
+      <footer className="mx-auto w-full max-w-6xl px-4 pb-24 pt-4 text-xs text-slate-400 sm:px-6 sm:pb-8">
         <div className="flex flex-col items-center justify-between gap-2 border-t border-slate-200/70 pt-6 sm:flex-row">
           <span>Share what makes you laugh.</span>
           <span>© {new Date().getFullYear()} Funny Movies</span>
