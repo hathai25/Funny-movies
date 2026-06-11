@@ -57,7 +57,7 @@ When user A shares a video:
    adapter so connected clients on **any** API instance receive it.
 4. The browser shows a sonner toast (deduped by notification id) and refreshes its caches.
 
-> **Live URL:** <https://funny-movies-web.vercel.app> (Vercel SPA → Render API)
+> **Live URL:** <https://funny-movies-web.vercel.app> (Vercel SPA → Render API).
 
 ---
 
